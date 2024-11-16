@@ -38,15 +38,31 @@ public class AuthController {
         this.jwtGenerator=jwtGenerator;
     }
     @PostMapping("login")
-    public ResponseEntity<AuthResponseDto> login(@RequestBody LoginDto loginDto){
-        Authentication authentication=authenticationManager.authenticate(
+    public ResponseEntity<AuthResponseDto> login(@RequestBody LoginDto loginDto) {
+        Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginDto.getUsername(),
-                loginDto.getPassword()));
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String token=jwtGenerator.generateToken(authentication);
-        return new ResponseEntity<>(new AuthResponseDto(token),HttpStatus.OK);
+                        loginDto.getPassword()));
 
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String token = jwtGenerator.generateToken(authentication);
+
+        // Check user role (Admin or User)
+        UserEntity user = userRepository.findByUsername(loginDto.getUsername()).get();
+        String role = "User";  // Default role is User
+
+        // Check if the user has the "ADMIN" role
+        for (Role r : user.getRoles()) {
+            if (r.getName().equals("ADMIN")) {
+                role = "Admin";
+                break;
+            }
+        }
+
+        // Add role information to response
+        return new ResponseEntity<>(new AuthResponseDto(token, role), HttpStatus.OK);
     }
+
+
     @PostMapping("signup")
     public ResponseEntity<String > signup(@RequestBody SignupDto signupDto){
         if(userRepository.existsByUsername(signupDto.getUsername())){
